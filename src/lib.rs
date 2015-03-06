@@ -1,5 +1,5 @@
 #![crate_name = "bodyparser"]
-#![feature(core, old_io)]
+#![feature(io, core)]
 
 //! Body Parser Plugin for Iron
 //!
@@ -17,7 +17,8 @@ use iron::prelude::*;
 use iron::headers;
 use iron::typemap::{Key};
 use std::marker;
-use std::old_io::ByRefReader;
+use std::io::Read as IoRead;
+use std::io::ReadExt;
 use persistent::Read;
 
 pub use self::errors::{BodyError, BodyErrorCause};
@@ -27,8 +28,9 @@ mod errors;
 mod limit_reader;
 
 fn read_body_as_utf8(req: &mut Request, limit: usize) -> Result<String, errors::BodyError> {
-    match LimitReader::new(req.body.by_ref(), limit).read_to_end() {
-        Ok(bytes) => {
+    let mut bytes = vec![];
+    match LimitReader::new(req.body.by_ref(), limit).read_to_end(&mut bytes) {
+        Ok(..) => {
              match String::from_utf8(bytes) {
                 Ok(e) => Ok(e),
                 Err(err) => Err(errors::BodyError {
